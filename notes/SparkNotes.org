@@ -1,0 +1,87 @@
+* RDDs (Resilient Distributed Datasets)
+** immutable sequence or parallel scala collection
+** can be created by
+*** xtf existing RDD
+*** from =SparkContext= or =SparkSession=
+* RDD operations (*Transformations* and *Actions*)
+** Transformations
+*** returns new RDDs as results
+*** *Lazy*
+**** allows optimizations of number of passes
+*** e.g
+**** map
+**** flatMap
+**** filter
+**** distinct
+*** *on 2 RDDs*
+**** union
+**** intersection
+**** subtract
+**** cartesian
+** Actions (*if fn return type is not RDD*)
+*** computes result based on RDD
+*** returns the value or save it to *external storage system* (e.g. HDFS)
+*** *Eager*
+*** e.g
+**** collect
+**** count
+**** take
+**** reduce
+**** foreach
+*** *non-scala* e.g
+**** takeSample
+**** takeOrdered
+**** saveAsTextFile
+**** saveAsSequenceFile
+* =SparkSession= or =SparkContext=
+** configuration of spark job
+** act as a handle to the spark cluster
+** represents connection between running spark cluster and the application
+** some methods to populate new RDD
+*** =parallelize= : scala collection to RDD
+*** =textFile= : file on *HDFS* or *local* to RDD
+* Evaluation in spark
+** by *default* RDDs are *computed* each time they are *evaluated*
+** to *cache* RDD in memory
+*** =persist()=
+**** different ways
+*** =cache=
+**** persist with default storage level
+* cluster topology
+#+BEGIN_EXAMPLE
+
+
+
+                           +------------------+
+                           | Driver Program   |
+                           | +--------------+ |
+                           | |Spark Context | |
+                           | +--------------+ |
+                           +-------^----------+
+                                   |
+                                   |
+                           +-------v-----------+
+                           |Cluster Manager    |
+                           |                   |
+                           |                   |
+                           +--------^----------+
+                                    |
+  +------------------+     +--------v---------+    +------------------+
+  | Worker Node      |     |                  |    |                  |
+  |+---------------+ |     | +--------------+ |    | +--------------+ |
+  ||Executor       | |     | |              | |    | |              | |
+  |+---------------+ |     | +--------------+ |    | +--------------+ |
+  +------------------+     +------------------+    +------------------+
+
+#+END_EXAMPLE
+** spark programs are written w.r.t to =Driver Program=
+** Driver communicate with Worker Nodes by *Cluster Manager*
+** *Spark Applications*
+*** set of processes running on a cluster
+*** coordinated by the driver program
+*** =main()= of the program runs in =driver=
+*** process running the driver program 
+**** creates =SparkContext=
+**** creates =RDDs=
+**** stages up
+**** sends off transformations and actions
