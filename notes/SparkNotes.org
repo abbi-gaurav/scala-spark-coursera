@@ -3,6 +3,13 @@
 ** can be created by
 *** xtf existing RDD
 *** from =SparkContext= or =SparkSession=
+** *Word Count E.g*
+#+BEGIN_SRC scala
+val rdd:RDD[String] = sparkContext.textFile("hdfs://....")
+val count:RDD[(String,Int)] = rdd.flatMap(line => line.split(" "))
+                                 .map(word => (word,1))
+                                 .reduceByKey(_ + _)
+#+END_SRC
 * RDD operations (*Transformations* and *Actions*)
 ** Transformations
 *** returns new RDDs as results
