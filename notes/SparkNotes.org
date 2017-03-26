@@ -92,3 +92,51 @@ val count:RDD[(String,Int)] = rdd.flatMap(line => line.split(" "))
 **** creates =RDDs=
 **** stages up
 **** sends off transformations and actions
+* Reduction Operations                                                :week2:
+** foldLeft vs fold
+|----------------------------------------+---------------------------------|
+| foldLeft                               | fold                            |
+|----------------------------------------+---------------------------------|
+| ~def foldLeft[B](z:B)(f:(A,B) => B):B~ | ~def fold(z:A)(f:(A,A) => A):A~ |
+| not parallelizable                     | parallelizable                  |
+| signature of f stops from parallelism  |                                 |
+|                                        | like a monoid                   |
+** aggregate
+*** ~aggregate[B](z: => B)(seqop: (B,A) => B, combop: (B.B) => B)~
+*** ~seqop~ ===> foldLeft
+*** ~combop~ ===> fold
+*** possible to parallelize
+*** change the return type of the reduction operation
+** comapre to scala collections
+|--------------------+-----------|
+| scala collections  | spark     |
+|--------------------+-----------|
+| fold               | fold      |
+| foldLeft/foldRight |           |
+| reduce             | reduce    |
+| aggregate          | aggregate |
+|--------------------+-----------|
+* Distributed Key value pairs (*Pair RDDs*) [[https://spark.apache.org/docs/latest/api/scala/index.html#org.apache.spark.rdd.PairRDDFunctions][PairRDDFunctions]]
+** have additional methods
+* xtfs
+** groupByKey
+** reduceByKey
+~def reduceByKey(func: (V,V) => V):RDD[(K,V)]~
+** mapValues
+~def mapValues[U](f : V => U):RDD[(K,U)]~
+** countByKey
+~def countByKey():Map[K,Long]~
+** keys
+** Joins
+*** join (Inner joins) *Lossy*
+**** returns a new RDD containing combined pairs *whose keys are present in both input RDDs*
+**** ~def join[W](other:RDD[(K,W)]):RDD[(K, (V,W))]~
+*** leftOuterJoin/rightOuterJoin (Outer Joins)
+**** returns new RDD containing combined pairs whose *keys need not be present in both input RDDs*
+*** comparison
+|---------------------------------------------------------------+---------------------------------------------------------------|
+| leftOuterJoin                                                 | rightOuterJoin                                                |
+|---------------------------------------------------------------+---------------------------------------------------------------|
+| ~def leftOuterJoin[W](other:Rdd[(K,w)]):RDD[K,(V,Option[W])]~ | ~def leftOuterJoin[W](other:Rdd[(K,w)]):RDD[K,(Option[V],W)]~ |
+|                                                               |                                                               |
+* Actions
