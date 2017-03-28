@@ -120,6 +120,7 @@ val count:RDD[(String,Int)] = rdd.flatMap(line => line.split(" "))
 ** have additional methods
 * xtfs
 ** groupByKey
+~def groupByKey(): RDD[(K, Iterable[V])]~
 ** reduceByKey
 ~def reduceByKey(func: (V,V) => V):RDD[(K,V)]~
 ** mapValues
