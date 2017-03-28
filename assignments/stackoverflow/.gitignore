@@ -17,4 +17,4 @@ project/plugins/project/
 *.log
 
 /.idea/
-/src/main/𝚛𝚎𝚜𝚘𝚞𝚛𝚌𝚎𝚜/𝚜𝚝𝚊𝚌𝚔𝚘𝚟𝚎𝚛𝚏𝚕𝚘𝚠/stackoverflow.csv
+/src/main/resources/stackoverflow/stackoverflow.csv
