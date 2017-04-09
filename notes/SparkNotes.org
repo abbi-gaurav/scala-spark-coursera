@@ -1,4 +1,4 @@
-* RDDs (Resilient Distributed Datasets)
+* RDDs (Resilient Distributed Datasets)                               :week1:
 ** immutable sequence or parallel scala collection
 ** can be created by
 *** xtf existing RDD
@@ -9,7 +9,7 @@ val rdd:RDD[String] = sparkContext.textFile("hdfs://....")
 val count:RDD[(String,Int)] = rdd.flatMap(line => line.split(" "))
                                  .map(word => (word,1))
                                  .reduceByKey(_ + _)
-#+END_SRC
+#+END_SRC 
 * RDD operations (*Transformations* and *Actions*)
 ** Transformations
 *** returns new RDDs as results
@@ -141,3 +141,312 @@ val count:RDD[(String,Int)] = rdd.flatMap(line => line.split(" "))
 | ~def leftOuterJoin[W](other:Rdd[(K,w)]):RDD[K,(V,Option[W])]~ | ~def leftOuterJoin[W](other:Rdd[(K,w)]):RDD[K,(Option[V],W)]~ |
 |                                                               |                                                               |
 * Actions
+* Shuffling                                                           :week3:
+** data has to be moved from one node to another for certain operations like =groupByKey=. It is called *shuffling*
+*** refer
+[[file:./shuffle.jpg]]
+** it means more network communication
+** consider using =reduceByKey= if possible
+*** here we reduce the dataset first before shuffling
+*** this implies less data over the network
+*** refer
+[[file:./shuffle-opitimize.jpg]]
+** by default spark uses =hash partitioning=
+* Partitioning (only on pair RDDs)
+** Properties
+*** can never span multiple machines
+*** each machine contains 1 or more partitions
+*** num of partitions is configurable
+**** default == total number of cores on all exectuor nodes
+** types
+*** hash partitioning
+**** p = k.hashCode() % num of partitions
+*** range partitioning
+**** key have order defined
+** how to set partitioning
+*** =partitionBy= 
+**** *results should be persisted*
+*** Using =Xtfs= that return RDD with specific =Partitioner=
+** *all Xtfs where key can possibly change have their result without a partitioner*
+* optimizing with partitioner
+** *shuffle can occur* when the resulting RDD depends on other elements of the same RDD or another RDD
+* Wide vs Narrow dependencies
+** computation on RDD are represented by *lineage graph*
+*** which is a DAG
+** RDD
+*** Partitions
+**** Atomic piece of dataset. 1 or more per node
+*** Dependencies
+**** Model relationship bw this RDD & its partitions with the RDD(s) it was derived from
+*** A function
+**** how to compute dataset based on its parent RDDs
+*** Metadata
+**** partitoning scheme and data placement
+** Narrow dependencies
+*** when each partition of parent RDD is used at most by one partition of child RDD
+*** fast
+*** no shuffle
+** Wide dependencies
+*** when each partition of partition RDD may be depended on by multiple child dependencies
+*** slow
+*** shuffle
+** Lineage and fault tolerance
+*** DAG path can be recomputed
+*** recomputation is costly for wide and cheap for narrow
+* Structured vs Unstructured data                                     :week4:
+** try joining smaller datasets first 
+** Spark can optimize querys based on *structural information*
+** logs ====> json ======> DB
+* Structured vs unstructured computation
+** functional Xtf vs declarative Xtf
+* Spark SQL
+** lets spark to optimize
+** Goals
+*** support relational processing
+*** High performance
+*** easily support semi and full structured datasets
+** 3 main APIs
+*** SQL Literal Syntax
+*** Dataframes
+*** Datasets
+** 2 specialized backend components
+*** Catalyst : Query optimizer
+*** Tungsten : off-heap serializer
+** To use *Spark-SQL*, we need *SparkSession*
+* Dataframes
+** properties
+*** its a table of sort / *relational* API over Spark RDD
+*** its conceptually RDDs full of records *with a known schema*
+*** are *untyped*
+*** Xtf on Dataframes are called *untype Xtfs*
+*** Able to be aggresively optimized
+** How to create
+*** from existing RDD
+**** Schema inference 
+#+BEGIN_SRC 
+val rdd = .... //Assume RDD[(Int,String)]
+val tupleDFF = rdd.toDF("id", "name") //column names
+#+END_SRC
+#+BEGIN_SRC 
+case class Person(id:Int, name:String)
+val personsRDD = ... //Assume RDD[Person]
+val personsDF = personsRDD.toDF //column names are automatically picked up
+#+END_SRC
+**** or explicit schema
+#+BEGIN_SRC 
+case class Person(id:String, name:String)
+//schema is encoded in a string
+val schemaString = "id name"
+
+//get schema object
+val fields = schemaString.split(" ")
+    .map(fieldName => StructField(fieldName, StringType, nullable=true))
+val schema = StructType(fields)
+
+val personsRDD = ... //Assume RDD[Person]
+
+//convert RDD to rows
+val rowRDD = personsRDD
+    .map(_.split(","))
+    .map(attributes => Row(attribute(0), attribute(1).trim))
+val personsDF = personsRDD.toDF //column names are automatically picked up
+
+//Apply schema
+val personsDF = spark.createDataFrame(rowRDD, schema)
+#+END_SRC
+*** read a specific datasource from file
+**** Common structured or semi-structured such as JSON
+**** example
+#+BEGIN_SRC 
+sparkSession.read.json("filePath")
+#+END_SRC
+**** supported formats *DataFrameReader*
+***** JSON
+***** CSV
+***** Parquet
+***** JDBC
+* SQL Literals *HiveQL*
+** register Dataframe as a temporary SQL view
+** pass SQL Literals
+** example
+#+BEGIN_SRC scala
+personsDF.createOrReplaceTempView("persons")
+
+val adultsDF = sparkSession.sql("SELECT * from persons where age > 17")
+#+END_SRC
+* Spark SQL data types 
+** imports
+*** =import org.apache.spark.sql.types._=
+*** =import org.apache.spark.sql.functions._=
+** basic data types
+** Complex
+*** ArrayType
+*** MapType
+*** StructType(List[StructFields])
+** example                                                     :insertImage:
+* Common Dataframe Xtfs in Dataframe API
+** select
+** agg
+** groupBy
+#+BEGIN_SRC 
+df.groupBy($"attribute1").agg(sum($"attribute2"))
+
+df.groupBy($"attribute1").count($"attribute2")
+
+case class Post(authorID:Strinf, subforum:String, likes:Int, date:String)
+val rankedDF = postDF
+    .groupBy($"authorID",$"subforum")
+    .agg(count($"authorID")) //new DF (authorID,subforum,count(authorID))
+    .orderBy($"subforum",$"count(authorID)".desc)
+#+END_SRC
+** join
+** refer column 
+*** =df.filter($"age" > 18)=
+*** =df.filter(df("age") > 18)=
+*** =df.filter("age > 18")=
+* Cleaning data in dataframes
+** drop rows with null/Nan
+*** =drop()= null/Nan in *any* column
+*** =drop("all")= null/Nan in *all* columns
+*** =drop(Array("id","name"))= null/Nan in specified column
+** replace with a constant
+*** =fill(0)= replace all occurrences of null/Nan with specified value
+*** =fill(Map("minBalance"->0))= replace all occurrences of null/Nan in specified column with specified value
+*** =replace(Array("id"), Map(123->890))= replace specified value (123) with 890 in specified column "id"
+* Actions in Dataframes
+** collect()
+** count()
+** first()
+** show() //top 20 rows
+** take(n:Int)
+* Joins on Dataframes
+** specify the column to join on
+** inner
+*** ~df.join(df2, $"df1.id" == $"df2.id")~
+** outer
+** left_outer
+*** ~df.join(df2, $"df1.id" == $"df2.id", "right_outer")~
+** right_outer
+** leftsemi
+** example
+#+BEGIN_SRC scala :tangle no
+case class Abo(id:String, v:(String,String))
+case class Loc(id:String, v:String)
+
+abosDF.join(locDF, abosDF("id") == locDF("id"))
+abosDF.join(locDF, abosDF("id") == locDF("id"), "left_outer")
+
+demographicsDF.join(financesDF, demographicsDF("id") == financesDF("id"),"inner")
+              .filter($"HasDebt" && $"HasFinancialDependants")
+              .filter($"CountryLive" == "Switzerland")
+              .count
+#+END_SRC
+* Optimizations
+** Catalyst *Query Optimizer*
+*** compiles Spark SQL program to RDD
+*** Laziness + structure makes it possibles to rearragnge the DAG of computations/the logical operations the user would like to do before they are executed
+*** optimizations
+**** Reordering
+**** reduce the amount of data
+**** Pruning unneeded partitioning
+** Tungsten *Off-heap-analyzer*
+*** highly-specialized data encoders
+**** can use schema information to tightly pack serialized data into memory
+*** column-based
+**** storing data, group data by column
+*** off-heap (free from GC)
+* Limitations of dataframes
+** untyped
+** limited set of data types
+** Requires semi-structured or structured data set
+* Datasets
+** properties
+*** typed distributed collection of data
+*** unifies Dataframe and RDD APIs. mix and match
+*** require structured and semi-structured data
+*** type Dataframe = Dataset[Row]
+** example
+#+BEGIN_SRC scala
+  import spark.implicits._
+  listingsDS.groupByKey(l => l.zip)
+    .agg(avg($"price").as[Double])
+
+  myDF.toDS
+  sparkSession.read.json("people.json").as[Person]
+  myRDD.toDS
+#+END_SRC
+** TypedColumn
+#+BEGIN_SRC scala
+$"price".as[Double]
+#+END_SRC
+* Xtfs on Datasets
+** untyped Xtfs
+*** same as in Dataframe
+** typed Xtfs
+*** map
+*** flatMap
+*** filter
+*** distinct
+*** groupByKey[K](f: T=>K)
+**** reduceGroups
+**** agg
+#+BEGIN_SRC scala
+someDS.agg(avg($"column").as[Double])
+#+END_SRC
+**** mapGroups
+***** does not support partial aggregartion
+***** thus requires reshuffling
+**** flatMapGroups
+*** emulating *reduceByKer*
+#+BEGIN_SRC scala
+  keyValueDS.groupByKey(p => p._1)
+    .mapGropus((k,vs) => (k,vs.foldLeft("")((acc,p) => acc + p._2)))
+
+  keyValueDS.groupByKey(p => p._1)
+    .mapValues(p => p._2)
+    .reduceGroups((acc,str) => acc + str)
+#+END_SRC
+*** coalesce
+*** repartition
+** Generic Aggregation
+#+BEGIN_SRC scala
+  class Aggregator[-IN, BUF, OUT]
+  val strConcat = new Aggregator[(Int,String),String,String]{
+    def zero:String = ""
+    def reduce(b:String, a:(Int,String)):String = b + a._2
+    def merge(b1:String, b2:String):String = b1 + b2
+    def finish(r:String):String = r
+    override def bufferEncoder = Encoder.STRING
+    override def outputEncoder = Encoder.STRING
+  }.toColumn
+
+  keyValueDS.groupByKey(pair => pair._1)
+     .agg(strConcat.as[String].show)
+#+END_SRC
+** Encoders
+#+BEGIN_SRC scala
+INT/LONG/STRING
+Encoder.STRING
+
+scalaInt/scalaLong/scalaByte
+Encode.scalaInt
+
+product/tuple
+Encode.product[Person]
+#+END_SRC
+* Actions
+** very similair
+* Comapison Usage
+|---------------------------------------------------------+------------------------------------------------+---------------------------------|
+| RDD                                                     | Dataframe                                      | Datasets                        |
+|---------------------------------------------------------+------------------------------------------------+---------------------------------|
+| - unstructured data                                     | - structured or semi-structured                | - structured or semi-structured |
+|                                                         |                                                | - typesafety                    |
+|---------------------------------------------------------+------------------------------------------------+---------------------------------|
+| - fine tune and manage low level details of computation | - best possible performance with optimizations | - good performance              |
+|---------------------------------------------------------+------------------------------------------------+---------------------------------|
+| - complex data, can't be serialized with Encoders       | -                                              | - functional APIs               |
+|---------------------------------------------------------+------------------------------------------------+---------------------------------|
+** when using Datasets with HOF, catalyst optimizations are not applied
+** when using relational operations with Datasets, catalyst optimizations are applied
+** Tungsten is always running under the hood in case of Datasets
