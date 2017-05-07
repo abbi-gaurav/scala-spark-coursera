@@ -151,8 +151,6 @@ val count:RDD[(String,Int)] = rdd.flatMap(line => line.split(" "))
 ** consider using =reduceByKey= if possible
 *** here we reduce the dataset first before shuffling
 *** this implies less data over the network
-*** refer
-[[file:./shuffle-opitimize.jpg]]
 ** by default spark uses =hash partitioning=
 * Partitioning (only on pair RDDs)
 ** Properties
