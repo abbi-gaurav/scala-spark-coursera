@@ -143,8 +143,10 @@ val count:RDD[(String,Int)] = rdd.flatMap(line => line.split(" "))
 * Actions
 * Shuffling                                                           :week3:
 ** data has to be moved from one node to another for certain operations like =groupByKey=. It is called *shuffling*
-*** refer
+*** shuffling optimizations
 [[file:./shuffle.jpg]]
+*** shuffle-operations
+[[file:./shuffle-operations.PNG]]
 ** it means more network communication
 ** consider using =reduceByKey= if possible
 *** here we reduce the dataset first before shuffling
@@ -168,6 +170,8 @@ val count:RDD[(String,Int)] = rdd.flatMap(line => line.split(" "))
 **** *results should be persisted*
 *** Using =Xtfs= that return RDD with specific =Partitioner=
 ** *all Xtfs where key can possibly change have their result without a partitioner*
+** example
+[[file:./partiton-data-xtf.PNG]]
 * optimizing with partitioner
 ** *shuffle can occur* when the resulting RDD depends on other elements of the same RDD or another RDD
 * Wide vs Narrow dependencies
@@ -191,8 +195,12 @@ val count:RDD[(String,Int)] = rdd.flatMap(line => line.split(" "))
 *** slow
 *** shuffle
 ** Lineage and fault tolerance
+*** image
+[[file:./lieage-fault-tolerance.PNG]]
 *** DAG path can be recomputed
 *** recomputation is costly for wide and cheap for narrow
+** example
+[[file:./narrow-vs-wide-dependencies.PNG]]
 * Structured vs Unstructured data                                     :week4:
 ** try joining smaller datasets first 
 ** Spark can optimize querys based on *structural information*
@@ -200,6 +208,8 @@ val count:RDD[(String,Int)] = rdd.flatMap(line => line.split(" "))
 * Structured vs unstructured computation
 ** functional Xtf vs declarative Xtf
 * Spark SQL
+** example
+[[file:./spark-sql.PNG]]
 ** lets spark to optimize
 ** Goals
 *** support relational processing
@@ -265,6 +275,9 @@ sparkSession.read.json("filePath")
 ***** CSV
 ***** Parquet
 ***** JDBC
+** examples
+[[file:./dataframe-datatypes.PNG]]
+[[file:./dataframe-datatypes-2.PNG]]
 * SQL Literals *HiveQL*
 ** register Dataframe as a temporary SQL view
 ** pass SQL Literals
@@ -283,7 +296,8 @@ val adultsDF = sparkSession.sql("SELECT * from persons where age > 17")
 *** ArrayType
 *** MapType
 *** StructType(List[StructFields])
-** example                                                     :insertImage:
+** example                                                    
+[[file:./complex-datatypes.PNG]]
 * Common Dataframe Xtfs in Dataframe API
 ** select
 ** agg
@@ -342,6 +356,8 @@ demographicsDF.join(financesDF, demographicsDF("id") == financesDF("id"),"inner"
               .count
 #+END_SRC
 * Optimizations
+** encoders image
+[[file:./encoders.PNG]]
 ** Catalyst *Query Optimizer*
 *** compiles Spark SQL program to RDD
 *** Laziness + structure makes it possibles to rearragnge the DAG of computations/the logical operations the user would like to do before they are executed

@@ -15,5 +15,4 @@ import scala.util.Random
 
 @RunWith(classOf[JUnitRunner])
 class TimeUsageSuite extends FunSuite with BeforeAndAfterAll {
-
 }
